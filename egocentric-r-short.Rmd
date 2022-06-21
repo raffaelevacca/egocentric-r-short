@@ -1,0 +1,175 @@
+---
+title: "Analyzing egocentric networks with R"
+subtitle: "A quick introduction"
+author: 
+  name: "Raffaele Vacca"
+  email: "[raffaelevacca.com](https://www.raffaelevacca.com/)"
+  affiliation: "University of Milan"
+date: '`r Sys.Date()`'
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_file="./docs/index.html") })
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float: true
+    theme: lumen
+---
+
+This is a quick introduction to R packages and tools for egocentric network analysis, with a focus on [`igraph`](https://igraph.org/) and [`tidyverse`](https://www.tidyverse.org/). It is a short version of a more extensive and in-depth [book on egocentric network analysis with R](https://raffaelevacca.github.io/egocentric-r-book/). I have use materials for teaching workshops on the subject at [INSNA Sunbelt](https://www.insna.org/) conferences, [NetSci](https://netscisociety.net/home) conferences, the [UAB Barcelona Course on Personal Network Analysis](https://sway.office.com/1TpXMhGqKa7fTsAC), and the [University of Groningen Summer School on Migration, Integration, and Social Networks](https://www.rug.nl/education/summer-winter-schools/migration-integration-and-social-networks/?lang=en).
+
+You can download these materials [here](https://github.com/raffaelevacca/Intro-SNA-with-R) (GitHub).
+
+```{r include=FALSE}
+# Set up root directory to project directory (not Rmd file directory)
+# knitr::opts_knit$set(root.dir = '../')
+```
+
+```{r include=FALSE, cache=FALSE}
+# Read script in
+knitr::read_chunk("egocentric-r-short.R")
+```
+
+# Setup and data
+
+To replicate the code, download the workshop's GitHub repository [here]() and save it to your computer.
+
+See the following links for:
+
+* [Workshop setup](https://raffaelevacca.github.io/egocentric-r-book/index.html#setup)
+* [Required R packages](https://raffaelevacca.github.io/egocentric-r-book/index.html#packages)
+* [Documentation about the workshop data](https://raffaelevacca.github.io/egocentric-r-book/index.html#data)
+
+# Representing and visualizing ego-networks {#represent}
+
+This section covers the following topics:
+
+* Representing ego-level attribute data and alter-level attribute data in R.
+* Joining (merging) ego-level and alter-level data frames.
+* Representing alter-alter tie data. 
+* Representing and manipulating an ego-network as an `igraph` object.
+* Visualizing an ego-network.
+
+## Ego-level and alter-level data {#egocentric-data}
+* Egocentric network data typically include at least three types of data:
+    - **Ego-level attribute data**. This is a dataset with attributes of egos. Each row is an ego (typically, a survey respondent) and each column is a characteristic of the ego. Following multilevel modeling terminology, we call this "level 2" because, in the multilevel structure of ego-network data, egos are the higher-level "groups" in which alters are clustered. In personal network surveys, these data are obtained from standard survey questions asking individual information about the respondent.
+    - **Alter-level attribute data**. This is a dataset with attributes of alters and of ego-alter ties. It is also the dataset that links each alter to an ego, that is, lists all the ego-alter ties. In this dataset, each row is an alter and each column is a characteristic of the alter, or of the relationship between the alter and the ego who nominated him/her. Following multilevel modeling terminology, we call this "level 1" because alters are the most granular units in the data, clustered within egos. In personal network surveys, these data are obtained from the so-called _name generator_ questions, which elicit lists of alters from each ego; and from the _name interpreter_ questions, which elicit characteristics of each alter.
+    - **Alter-alter tie data**. These are the data about alter-alter ties as reported by the ego. In personal network surveys, these data are obtained from so-called _edge interpreter_ questions.
+* **File formats:**
+    - Ego-level attribute data. This is normally a single dataset (in a single file), with each row representing one ego, and different columns representing different ego-level attributes. This is similar to any respondent-level dataset you have in standard survey data.
+    - Alter-level attribute data. Depending on the data collection software, you might have a single dataset (in a single file) including alters nominated by all egos; or separate datasets (in separate files), one for each ego, with the alters nominated by that ego (and with the same variables in all datasets).
+    - Alter-alter tie data. These are typically in edge list format or in adjacency matrix format, depending on the data collection software. If the tie data are in adjacency matrices, you normally have a separate adjacency matrix for each ego, in a separate file. If they are in edge lists, you might have a single edge list including alters from all egos (with an additional column indicating the ego that nominated the two alters), or a separate edge list (in a separate file) for each ego.
+* The data format described above works well because, in standard egocentric data, the different ego-networks are **separate** (non-overlapping). This means that an alter can only "belong" to one and one only ego, and alter-alter ties only exist between alters nominated by the same egos. In other words, there are no links or overlaps between the networks of different egos. In particular, this means that there is a one-to-one correspondence between alters and ego-alter ties: for each ego-alter tie there is only one alter, and vice versa (so the level of alters is the same as the level of ego-alter ties).
+* In egocentric analysis you are frequently switching between level 1 and 2, and **joining** information from the two levels.
+* **Level-1 join.** For certain types of analysis you need to join ego attributes (level 2) into an alter-level data set (level 1).
+    - Because there is one ego for multiple alters, this is a one-to-many join, with the same value of an ego attribute (one ego row) being joined to multiple alters (multiple alter rows).
+    - The data frames are joined by ego ID. 
+* **Level-2 join.** In other cases you want to join alter attributes (level 1) into an ego-level dataset (level 2). 
+    - Because there are multiple alters for one ego, this requires that you first summarize or aggregate the alter attributes for each ego.
+    - If you have _continuous_ alter attributes, you typically summarize them by taking averages and dispersion measures (variance, standard deviation, etc.) of the alter attribute for each ego: for example, average alter age for each ego, or standard deviation of contact frequency between alters and each ego.
+    - If you have _categorical_ alter attributes, you normally summarize them by taking counts or proportions of certain categories, or qualitative diversity measures (e.g., generalized variance, entropy): for example, proportion of women, or ethnic diversity in each ego's network.
+    - Once you have these summary variables on ego-network _composition_, you can join them with an ego-level dataset by ego ID.
+    - The level-2 join can also involve summary variables on ego-network *structure*: for example, average alter degree, ego-network density, or number of components. These variables can be joined with an ego-level dataset by ego ID.
+    - We'll consider this type of ego-level summarization and the level-2 join in Chapters \@ref(composition) and \@ref(structure) about measures of ego-network composition and structure.
+
+```{r levels, include=TRUE, cache=FALSE, tidy= FALSE}
+```
+
+## Ego-networks as `igraph` objects
+
++ In `igraph`, networks are called **graphs** and are represented as objects of class `igraph`. Nodes are called **vertices** and ties are called **edges**.
++ Given an igraph object `gr`:
+    * `V(gr)` shows you the graph vertices (identified by `name`, if they have a `name` attribute, or by integers otherwise). This is an object of class _vertex sequence_ (`igraph.vs`).
+    * `E(gr)` shows you the graph edges. This is an object of class _edge sequence_ (`igraph.es`).
++ Vertices, edges and graphs have **attributes**. You can import them from external data files, or you can set them manually in R. If you import data into an `igraph` object with a vertex attribute called "age", an edge attribute called "strength", and a graph attribute called "size", then
+    * `V(gr)$age` returns the vertex attribute `age` as a vector; 
+    * `E(gr)$strength` returns the edge attribute `strength` as a vector; 
+    * `gr$size` returns the graph attribute `size`.
++ `print`ing an `igraph` object returns some **summary information** about the network. This includes the counts of vertices and edges, and whether the network is directed, named (i.e. if vertices have a `name` attribute), weighted (i.e. if edges have a `weight` attribute), or bipartite (also called two-mode).
++ **Querying vertices and edges**
+    * Based on attributes. You can query vertices and edges with specific characteristics (attribute values), and save them for re-use. E.g. `V(gr)[age=30]` returns all vertices whose `age` attribute equals 30; `E(gr)[strength=1]` returns all edges whose strength is 1.
+    * Based on network structure. The `V(gr)[...]` and `E(gr)[...]` syntax can also be used with specific functions that extract information on tie distribution: for example, to query all vertices that are adjacent to a given vertex _i_, or all edges between two particular subsets of vertices. The main functions here are `nei()`, `inc()` and `%--%` (see code below).
+    * More information on useful igraph syntax for vertex and edge indexing is [here](http://igraph.org/r/doc/igraph-vs-indexing.html) (vertex indexing) and [here](http://igraph.org/r/doc/igraph-es-indexing.html) (edge indexing).
++ In addition to `igraph`, another useful resource for egocentric network analysis is the `ggraph` package, which provides flexible and easy tools for network visualization by applying the `ggplot2` grammar of graphics to network data (learn more [here](https://github.com/thomasp85/ggraph)). Remember that you can also visualize networks with `igraph`, which uses base R plotting.
++ **What we do in the following code**.
+  * Query vertex and edge attributes in an ego-network.
+  * Obtain descriptive statistics for attributes of alters (vertex attributes) and alter-alter ties (edge attributes) in the ego-network.
+  * Visualize an ego-network with `ggraph`, setting aesthetic parameters based on alter attributes.
+
+```{r igraph, include=TRUE, cache=FALSE, tidy= FALSE, out.width = "60%", fig.align="center", message=FALSE}
+```
+
+# Ego-network composition
+
+Ego-network composition refers to the distribution of attributes of alters (for example, age or race/ethnicity) or attributes of ties between alters and the ego (for example, closeness or frequency of contact). For brevity, these are often called simply _alter attributes_ in the following text. We consider composition by first analyzing just one ego-network, then replicating the same type of analysis on many ego-networks at once. This section covers the following topics:
+
+* Calculating measures of composition for one ego-network.
+* Representing data from multiple ego-networks as data frames.
+* Running the same operation on many ego-networks and combining results back together (split-apply-combine).
+* Split-apply-combine on data frames with `dplyr` to analyze the composition of many ego-networks at once.
+
+## Measures of ego-network composition
+* Many different measures can be calculated in R to describe ego-network composition. 
+    - The result is typically an ego-level summary variable: one that assigns a number to each ego, with that number describing a characteristic of the ego-network composition for each ego.
+* To calculate compositional measures we don't need any network or relational data (data about alter-alter ties), we only need the alter-level attribute dataset (for example, with alter age, gender, ethnicity, frequency of contact, etc.). In other words, we only need, for each ego, a list of alters with their characteristics, and no information about ties between alters.
+    - So in this section, ego-networks are represented simply by alter-level data frames. We don't need to work with the `igraph` network objects until we want to analyze ego-network structure (alter-alter ties).
+* **What we do in the following code**.
+  - Look at the alter attribute data frame for one ego.
+  - Using this data frame, calculate compositional measures based on one alter attribute.
+  - Calculate compositional measures based on two alter attributes.
+  - Do the level-1 join: join ego attributes into alter-level data.
+  - Using the joined data, calculate compositional measures of homophily between ego and alters.
+  - Calculate multiple compositional measures and put them together into one ego-level data frame.
+
+```{r composition, include=TRUE, cache=FALSE, tidy= FALSE}
+```
+
+## Analyzing the composition of many ego-networks {#comp-many}
+
++ Whenever we have a dataset in which rows (level 1) are clustered or grouped by values of a given factor (level 2), the `dplyr` package makes level-2 summarizations very easy. 
+    * In egocentric analysis, we typically have an alter attribute data frame whose rows (alters, level 1) are clustered by egos (level 2).
++ In general, the `dplyr::summarise` function allows us to calculate summary statistics on a single variable or on multiple variables in a data frame. To calculate the same summary statistic on multiple variables, we select them with `across()`.
++ If we run `summarise` after _grouping_ the data frame by a factor variable with `group_by`, then the data frame will be "split" by levels (categories) of that factor, and the summary statistics will be calculated on each piece: that is, for each unique level of the grouping factor. If the grouping factor is the ego ID, we can immediately obtain summary statistics for each of hundreds or thousands of egos in one line of code. The code below provides examples.
++ **What we do in the following code**. 
+    * Use `summarise` to calculate summary variables on network composition for all of the 102 egos at once.
+    * Join the results with other ego-level data (level-2 join).
+
+```{r split-df, include=TRUE, cache=FALSE, tidy= FALSE}
+```
+
+# Ego-network structure {#structure}
+
+Ego-network structure refers to the distribution of ties among alters. As usual, we first illustrate analyses on one ego-network, then replicate them on many ego-networks at once. This section covers the following topics:
+
+* Calculating measures of ego-network structure.
+* R lists and how they can be used to represent many ego-networks.
+* Split-apply-combine on lists with `purrr` to analyze the structure of many ego-networks at once.
+
+## Measures of ego-network structure
+* Ego-network structure can be described using different measures, either at the alter level (e.g., alter centrality measures) or at the ego level (e.g., ego-network density).
+* Whenever ego-network structure is considered (whether by itself or in combination with composition), we need data on alter-alter ties. Unlike in Chapter \@ref(composition), just the alter attribute data frame will not be sufficient.
+    - So in this section we need to work with the `igraph` objects containing the alter-alter tie information for our ego-networks (and possibly also incorporate alter attribute data frames if our measures are a combination of structure and composition).
+* **What we do in the following code**.
+  - Consider ego-network structural measures based on the distribution of alter-alter ties, with the ego excluded: density, number of components, average alter degree, maximum alter betweenness, number of isolates. Calculate these using `igraph` functions.
+  - Calculate measures combining ego-network structure and composition, such as the average degree centrality of alters who are family members.
+
+```{r structure, include=TRUE, cache=FALSE, tidy= FALSE, message=FALSE}
+```
+
+## Analyzing the structure of many ego-networks {#apply-purrr}
++ In base R, functions of the `apply` family, such as `lapply` and `sapply`, are the traditional way to take a function and apply it to every element of a list. In tidyverse, the `purrr` package does the same thing but in more efficient ways and with more readable code. 
++ We use `purrr` to apply the same function to each element of a list of ego-networks, that is, to each ego-network. Depending on the function, the result for each ego-network may be a single number or a more complex object (for example, a data frame).
++ `purrr` provides type-stable functions, which always return the same type of output: 
+    * `map` always returns a list. (This is the equivalent of `lapply` in base R).
+    * `map_dbl` always returns a vector of double-precision numbers. `map_int` returns a vector of integer numbers. `map_chr` returns a character vector. `map_lgl` returns a logical vector.
+    * `map_dfr` returns a data frame. It assumes that you are applying an operation to each list element, which returns one data frame row for that element. It then binds together the data frame rows obtained for each element, combining them into a single data frame.
++ In addition to type-stable output, the `map` functions also offer a convenient formula syntax: `~ f(.x)`, where: (1) `.x` represents each element of the input list; (2) `f` is the function to be executed on that element.
+    * For example, `map(L, ~ .x * 2)` takes each element of the list `L` (represented by `.x`) and multiplies it times 2.
++ The `map` functions preserve list names in their output. If we have a list of ego-networks whose names are the ego IDs, this means that ego IDs will be preserved in result lists and vectors.
++ `map` is also useful when you want to run functions that take a list element as argument (e.g. an `igraph` ego-network), and return another list element as output (e.g. another `igraph` object). This is the case whenever you want to manipulate the ego-networks (for example, only keep a certain type of ties or vertices in the networks) and store the results in a new list.
++ `map_dbl` is useful when you want to run functions that take a list element as argument (e.g. an `igraph` ego-network), and return a number as output. This is the case whenever you want to run a structural measure such as tie density or centralization on each network.
++ **What we do in the following code**. 
+    * Use `purrr` functions to calculate the same structural measures on every ego-network in the data.
+
+```{r split-list, include=TRUE, cache=FALSE, tidy= FALSE}
+```
