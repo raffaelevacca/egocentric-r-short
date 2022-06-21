@@ -4,11 +4,7 @@
 # License: Creative Commons Attribution-NonCommercial-ShareAlike CC BY-NC-SA 
 # http://creativecommons.org/licenses/by-nc-sa/3.0/
 
-
-############################################################################## #
-###                      EGO LEVEL VS ALTER LEVEL DATA                      ====
-############################################################################## #
-## ---- levels
+## ---- packages
 
 # Load all packages used in this script
 library(tidyverse)
@@ -17,6 +13,14 @@ library(ggraph)
 library(skimr)
 library(janitor)
 library(magrittr)
+
+## ---- end-packages
+
+############################################################################## #
+###                      EGO LEVEL VS ALTER LEVEL DATA                      ====
+############################################################################## #
+
+## ---- levels
 
 # Load the data.
 load("./Data/data.rda")
@@ -89,20 +93,22 @@ E(gr)
 V(gr)$alter.clo
 
 # Mean closeness of alters to ego. 
+V(gr)$alter.clo %>%
+mean(na.rm=TRUE)
+
+# The previous line uses the pipe operator: it's the same as the following
 mean(V(gr)$alter.clo, na.rm=TRUE)
 
 # More descriptive statistics on alter closeness.
-skimr::skim_tee(V(gr)$alter.clo) 
+V(gr)$alter.clo %>%
+skimr::skim_tee() 
 
 # Alter's country of residence.
 V(gr)$alter.res
 
 # Frequencies.
-janitor::tabyl(V(gr)$alter.res)
-
-# This is more readable with the pipe operator.
-V(gr)$alter.res %>% 
-  tabyl()
+V(gr)$alter.res %>%
+janitor::tabyl()
 
 # Alter IDs are stored in the "name" vertex attribute
 V(gr)$name
@@ -111,7 +117,8 @@ V(gr)$name
 E(gr)$weight
 
 # Frequencies of edge weights.
-tabyl(E(gr)$weight)
+E(gr)$weight %>%
+tabyl()
 
 
 # Displaying vertex attributes in network visualization                     ----
@@ -158,7 +165,7 @@ ggraph(gr.ego) +
 # ego ID 28.
 alter.attr.28
 
-# Compositional measures based on a single alter attribute                  ----
+# Compositional measures based on an alter attribute                  ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 # Summary of continuous variable: Average alter closeness.
@@ -223,53 +230,6 @@ alter.attr.all %>%
 
 # We'll talk more about this and show more examples in the next sections.
 
-# Compositional measures based on multiple alter attributes                 ----
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-# Using indexing we can combine multiple alter attribute variables.
-
-# Mean closeness of alters who are "Friends".
-
-# Check out the relevant vector.
-alter.attr.28 %>%
-  filter(alter.rel=="Friends") %>%
-  pull(alter.clo)
-
-# Get its mean.
-alter.attr.28 %>%
-  filter(alter.rel=="Friends") %>%
-  pull(alter.clo) %>% 
-  mean
-
-# Mean closeness of alters who are "Acquaintances".
-alter.attr.28 %>%
-  filter(alter.rel=="Acquaintances") %>%
-  pull(alter.clo) %>% 
-  mean
-
-# Equivalently (useful for writing functions)
-mean(alter.attr.28$alter.clo[alter.attr.28$alter.rel=="Acquaintances"])
-
-# Count of close family members who live in Sri Lanka vs those who live in Italy.
-
-# In Sri Lanka.
-alter.attr.28 %>%
-  filter(alter.rel == "Close family", alter.res == "Sri Lanka") %>%
-  count
-
-# Equivalently (useful for writing functions)
-sum(alter.attr.28$alter.rel == "Close family" & alter.attr.28$alter.res == "Sri Lanka")
-# In Italy.
-sum(alter.attr.28$alter.rel == "Close family" & alter.attr.28$alter.res == "Italy")
-
-# Again, we can put these measures together into a data frame row with dplyr.
-alter.attr.28 %>%
-  summarise(
-    mean.clo.fr = mean(alter.clo[alter.rel=="Friends"]), 
-    mean.clo.acq = mean(alter.clo[alter.rel=="Acquaintances"]),
-    count.fam.slk = sum(alter.rel=="Close family" & alter.res=="Sri Lanka"),
-    count.fam.ita = sum(alter.rel=="Close family" & alter.res=="Italy")
-  )
 
 # Compositional measures of homophily between ego and alters                ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -351,45 +311,18 @@ alter.attr.all %>%
   group_by(ego_ID) %>%
   summarise(N.nat = n_distinct(alter.nat))
 
-# We can also "permanently" group the data frame by ego_ID and then calculate all
-# our summary measures by ego ID.
-alter.attr.all %<>% 
-  group_by(ego_ID)
-
 # * N of distinct values in the alter nationality, country of residence, and
 # age bracket variables:
 alter.attr.all %>%
+  group_by(ego_ID) %>%
   summarise(., across(c(alter.nat, alter.res, alter.age.cat), n_distinct))
 
-# We can also use summarise to run more complex functions on alter attributes
-# by ego.
-
-# Imagine we want to count the number of alters who are "Close family", "Other
-# family", and "Friends" in an ego-network.
-
-# Let's consider the ego-network of ego ID 28 as an example.
-alter.attr.28
-
-# Calculate the number of alters in each relationship type in this ego-network.
-
-# Vector of alter relationship attribute.
-alter.attr.28$alter.rel
-
-# Flag with TRUE whenever alter is "Close family"
-alter.attr.28$alter.rel=="Close family"
-
-# Count the number of TRUE's
-sum(alter.attr.28$alter.rel=="Close family")
-
-# The same can be done for "Other family" and "Friends"
-sum(alter.attr.28$alter.rel=="Other family")
-sum(alter.attr.28$alter.rel=="Friends")
-
-# With dplyr we can run the same operations for every ego
+# We can save these results in a separate, ego-level dataset (each row is one 
+# ego)
 N.rel <- alter.attr.all %>%
-  summarise(N.clo.fam = sum(alter.rel=="Close family"),
-            N.oth.fam = sum(alter.rel=="Other family"),
-            N.fri = sum(alter.rel=="Friends"))
+  group_by(ego_ID) %>%
+  summarise(., across(c(alter.nat, alter.res, alter.age.cat), n_distinct))
+
 N.rel
 
 # After getting compositional summary variables for each ego, we might want to
@@ -398,16 +331,6 @@ N.rel
 # Merge with summary variables.
 ego.df %>%
   left_join(N.rel, by= "ego_ID")
-
-# We can then ungroup alter.attr.all by ego ID to remove the grouping information.
-alter.attr.all <- ungroup(alter.attr.all)
-
-# To get the size of each personal network, we can use the count() function,
-# which counts the number of rows for each unique value of a variable. The
-# number of rows for each unique value of ego_ID in alter.attr.all is the number
-# of alters for each ego (personal network size).
-alter.attr.all %>% 
-  dplyr::count(ego_ID)
 
 # ---- end-split-df
 
@@ -472,67 +395,11 @@ length(gr.list)
 head(gr.list)
 
 # We can use purrr::map() to run the same function on every element of the list.
-purrr::map_dbl(gr.list, edge_density)
+gr.list %>%
+  purrr::map_dbl(edge_density)
 
 # We'll talk more about this and show more examples in the section about 
 # multiple ego-networks.
-
-
-# Measures combining composition and structure: From structure to composition ----
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-# Non-network attribute of alters selected based on structural characteristics.
-
-# Type of relationship with alter with max betweenness.
-
-# Logical index for alter with max betweenness.
-ind <- betweenness(gr, weights = NA) == max(betweenness(gr, weights = NA))
-
-# Get that alter.
-V(gr)[ind]
-
-# Get type of relation of that alter.
-V(gr)[ind]$alter.rel
-
-# Note that there might be multiple alters with the same (maximum) value of 
-# betweenness. For that case, we'll need more complicated code (see exercise).
-
-# Measures combining composition and structure: From composition to structure ----
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-# Structural characteristics of alters selected based on composition.
-
-# Average degree of Close family.
-
-# Vertex sequence of Close family members.
-(clo.fam.vs <- V(gr)[alter.rel=="Close family"])
-
-# Get their average degree.
-gr %>%
-  degree(v = clo.fam.vs) %>% 
-  mean
-
-# Count of ties between alters who live in Sri Lanka.
-
-# First get the vertex sequence of alters who live in Sri Lanka.
-(alters.sl <- V(gr)[alter.res=="Sri Lanka"])
-
-# Then get the edges among them.
-E(gr)[alters.sl %--% alters.sl]
-
-# How many edges are there between alters who live in Sri Lanka?
-E(gr)[alters.sl %--% alters.sl] %>% 
-  length
-
-# Density between alters who live in Sri Lanka.
-
-# Get subgraph of relevant alters
-induced_subgraph(gr, vids = alters.sl)
-
-# Get the density of this subgraph.
-induced_subgraph(gr, vids = alters.sl) %>% 
-  edge_density
-
 
 # ---- end-structure
 
@@ -544,23 +411,22 @@ induced_subgraph(gr, vids = alters.sl) %>%
 # A simple structural measure such as network density can be applied to every
 # ego-network (i.e., every element of our list), and returns a scalar for each
 # network. All the scalars can be put in a vector.
-purrr::map_dbl(gr.list, edge_density) 
+gr.list %>%
+  purrr::map_dbl(edge_density) 
 
 # Note that the vector names (taken from gr.list names) are the ego IDs.
 
 # If you want the same result as a nice data frame with ego IDs, use enframe().
-map_dbl(gr.list, edge_density) %>% 
-  enframe()
+gr.list %>%
+  map_dbl(edge_density) %>% 
+  enframe(name = "ego_ID", value = "density")
 
 # Same thing, with number of components in each ego network. Note the ~ .x 
 # syntax
-map_dbl(gr.list, ~ components(.x)$no) %>% 
-  enframe()
-
-# Equivalently
 gr.list %>%
-  map_dbl(~ components(.x)$no) %>% 
+  map_dbl(~ components(.x)$no) %>%
   enframe()
+  
 
 # With map_dfr() we can calculate multiple structural measures at once on every 
 # ego-network, and return the results as a single ego-level data frame.
