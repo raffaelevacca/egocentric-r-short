@@ -17,8 +17,6 @@ output:
 
 This is a quick introduction to R packages and tools for egocentric network analysis, with a focus on [`igraph`](https://igraph.org/) and [`tidyverse`](https://www.tidyverse.org/). It's a short version of a more extensive and in-depth [book on egocentric network analysis with R](https://raffaelevacca.github.io/egocentric-r-book/). I use these materials for teaching workshops on the subject at [INSNA Sunbelt](https://www.insna.org/)/[NetSci](https://netscisociety.net/home) conferences, the [UAB Barcelona Course on Personal Network Analysis](https://sway.office.com/1TpXMhGqKa7fTsAC), and the [University of Groningen Summer School on Migration, Integration, and Social Networks](https://www.rug.nl/education/summer-winter-schools/migration-integration-and-social-networks/?lang=en).
 
-You can download these materials [here](https://github.com/raffaelevacca/egocentric-r-short) (GitHub).
-
 ```{r include=FALSE}
 # Set up root directory to project directory (not Rmd file directory)
 # knitr::opts_knit$set(root.dir = '../')
@@ -31,11 +29,16 @@ knitr::read_chunk("egocentric-r-short.R")
 
 # Setup and data
 
-To replicate the code, download the workshop's GitHub repository [here]() and save it to your computer.
+**Download links:**
 
-See the following links (from the [longer version](https://raffaelevacca.github.io/egocentric-r-book/) of these materias) for:
+* [GitHub repository](https://github.com/raffaelevacca/egocentric-r-short) for this project (to get and reproduce the code below):
+    - Click on the link above > `Code` green button > Download ZIP
+    - Unzip the folder and save it to your computer
+* [Workshop slides](https://www.dropbox.com/sh/q7021q1adbf3e5j/AAC8aOdSRi5aCowcPUEGE4_Aa?dl=0)
 
-* [Workshop setup](https://raffaelevacca.github.io/egocentric-r-book/index.html#setup)
+**Also see the following links** (from the [longer version](https://raffaelevacca.github.io/egocentric-r-book/) of these materias) for:
+
+* [Software setup](https://raffaelevacca.github.io/egocentric-r-book/index.html#setup)
 * [Required R packages](https://raffaelevacca.github.io/egocentric-r-book/index.html#packages)
 * [Documentation about the workshop data](https://raffaelevacca.github.io/egocentric-r-book/index.html#data)
 
